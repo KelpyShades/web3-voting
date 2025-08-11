@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { votingSession } from '../Global/MockData'
 import VotingForm from './components/VotingForm'
+import { redirect } from 'next/navigation'
 
 // admin dashboard page
 export default async function AdminPage() {
@@ -11,6 +12,9 @@ export default async function AdminPage() {
   const role = user?.publicMetadata?.role
 
   if (role !== 'admin') {
+    // alert('You are not authorized to access this page')
+    // redirect('/')
+
     return (
       <div className="flex min-h-screen w-screen flex-col items-center justify-center gap-4">
         <p>You are not authorized to access this page</p>
@@ -24,8 +28,8 @@ export default async function AdminPage() {
     )
   }
 
-  return ( 
-    <div className="flex flex-col flex-1 w-[clamp(20rem,80vw,40rem)]">
+  return (
+    <div className="flex w-[clamp(20rem,80vw,40rem)] flex-1 flex-col">
       {/* Show theres no ongoing voting session */}
       <VotingForm />
     </div>

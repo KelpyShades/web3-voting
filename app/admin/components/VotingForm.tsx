@@ -20,17 +20,18 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo } from 'react'
 import DeleteSessionDialog from './DeleteSessionDialog'
 import SessionCreated from './SessionCreated'
+import { createVotingSession } from '@/app/ethers/transactions'
 
 const schema = z
   .object({
     title: z.string().min(3, 'Title must be at least 3 characters'),
-    description: z.string().min(5, 'Description must be at least 5 characters'),
     startTime: z.string().min(1, 'Start time is required'),
     endTime: z.string().min(1, 'End time is required'),
     candidates: z
       .array(
         z.object({
           name: z.string().min(1, 'Candidate name is required'),
+          party: z.string().min(1, 'Candidate party is required'),
         })
       )
       .min(2, 'At least 2 candidates'),
@@ -75,7 +76,6 @@ type FormValues = z.infer<typeof schema>
 
 export default function VotingForm() {
   const {
-    createVotingSession,
     getCandidatesCount,
     incrementCandidatesCount,
     setIsVotingSessionCreated,
@@ -100,7 +100,6 @@ export default function VotingForm() {
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
-      description: '',
       startTime: '',
       endTime: '',
       candidates: candidatesDefault,
@@ -109,23 +108,13 @@ export default function VotingForm() {
   })
 
   const onSubmit = (data: FormValues) => {
-    // Map to your store shape
-    createVotingSession({
-      id: Date.now(),
-      title: data.title,
-      description: data.description,
-      startTime: data.startTime,
-      endTime: data.endTime,
-      status:
-        Date.parse(data.startTime) > Date.now()
-          ? 'pending'
-          : Date.parse(data.endTime) < Date.now()
-            ? 'ended'
-            : 'ongoing',
-      totalVotes: 0,
-      candidatesCount: data.candidates.length,
-      candidates: data.candidates.map((c, i) => ({ id: i + 1, name: c.name })),
-    })
+    createVotingSession(
+      Date.now(),
+      data.title,
+      Math.floor(Date.parse(data.startTime) / 1000),
+      Math.floor(Date.parse(data.endTime) / 1000),
+      data.candidates
+    )
   }
 
   if (isVotingSessionCreated) {
@@ -136,7 +125,7 @@ export default function VotingForm() {
     <div className="flex w-full flex-1 flex-col items-center justify-center gap-4 pb-8">
       <Card className="w-full gap-4">
         <CardHeader>
-          <CardTitle>New Voting Session</CardTitle>
+          <CardTitle>Create Voting Session</CardTitle>
         </CardHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
@@ -149,18 +138,6 @@ export default function VotingForm() {
             />
             {errors.title && (
               <p className="text-xs text-red-500">{errors.title.message}</p>
-            )}
-
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              placeholder="Voting Session Description"
-              {...register('description')}
-            />
-            {errors.description && (
-              <p className="text-xs text-red-500">
-                {errors.description.message}
-              </p>
             )}
 
             <div className="flex flex-col gap-2 md:flex-row md:justify-between">
@@ -202,20 +179,35 @@ export default function VotingForm() {
               </div>
             </div>
 
-            <Label htmlFor="candidates">Candidates</Label>
+            <Label htmlFor="candidates">Candidates and Parties</Label>
             <div className="flex flex-col gap-2">
               {Array.from({ length: getCandidatesCount() }).map((_, index) => (
-                <div key={index} className="flex flex-col gap-1">
-                  <Input
-                    id={`candidate-${index}`}
-                    placeholder={`Candidate ${index + 1} name`}
-                    {...register(`candidates.${index}.name` as const)}
-                  />
-                  {errors.candidates?.[index]?.name && (
-                    <p className="text-xs text-red-500">
-                      {errors.candidates[index]?.name?.message as string}
-                    </p>
-                  )}
+                <div key={index} className="flex gap-1">
+                  <div className="flex flex-1 flex-col gap-1">
+                    <Input
+                      className=""
+                      id={`candidate-${index}`}
+                      placeholder={`Candidate ${index + 1} name`}
+                      {...register(`candidates.${index}.name` as const)}
+                    />
+                    {errors.candidates?.[index]?.name && (
+                      <p className="text-xs text-red-500">
+                        {errors.candidates[index]?.name?.message as string}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1">
+                    <Input
+                      id={`candidate-${index}`}
+                      placeholder={`Candidate ${index + 1} party`}
+                      {...register(`candidates.${index}.party` as const)}
+                    />
+                    {errors.candidates?.[index]?.party && (
+                      <p className="text-xs text-red-500">
+                        {errors.candidates[index]?.party?.message as string}
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
 
@@ -242,7 +234,8 @@ export default function VotingForm() {
               type="button"
               onClick={() => {
                 reset()
-                setIsVotingSessionCreated(false)
+                useVotingStore.persist.clearStorage()
+                // setIsVotingSessionCreated(false)
               }}
               variant="outline"
             >

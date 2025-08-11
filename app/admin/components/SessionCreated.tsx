@@ -8,6 +8,7 @@ import {
 import { useVotingStore } from '@/app/ZustandStores/VotingStore'
 import DeleteSessionDialog from './DeleteSessionDialog'
 import { Button } from '@/components/ui/button'
+// import { cancelVoting } from '@/app/ethers/transactions'
 
 export default function SessionCreated({
   resetForm,
@@ -39,12 +40,6 @@ export default function SessionCreated({
               </div>
             </div>
 
-            <div>
-              <p className="text-muted-foreground text-sm font-medium">
-                Description
-              </p>
-              <p className="text-base">{votingData.description}</p>
-            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -72,7 +67,7 @@ export default function SessionCreated({
               <ul className="mt-1 space-y-1">
                 {votingData.candidates.map((candidate) => (
                   <li key={candidate.id} className="text-base">
-                    {candidate.name}
+                    {candidate.name} - {candidate.party}
                   </li>
                 ))}
               </ul>
@@ -82,7 +77,7 @@ export default function SessionCreated({
               <p className="text-muted-foreground text-sm font-medium">
                 Total Votes
               </p>
-              <p className="text-base">{votingData.totalVotes}</p>
+              <p className="text-base">{votingData.voteCount}</p>
             </div>
           </div>
         </CardContent>
@@ -91,7 +86,7 @@ export default function SessionCreated({
             variant="outline"
             onClick={() => {
               navigator.clipboard
-                .writeText(`${window.location.origin}/vote/${votingData.id}`)
+                .writeText(`${window.location.origin}/${votingData.id}`)
                 .then(() => {
                   alert('Link copied to clipboard')
                 })
@@ -103,21 +98,19 @@ export default function SessionCreated({
             <DeleteSessionDialog
               onDelete={() => {
                 // setMakingVotingSession(false)
+                // setIsVotingSessionCreated(false)
                 resetForm()
-                setIsVotingSessionCreated(false)
               }}
             />
             {/* <Button
                 onClick={() => {
-                  // setMakingVotingSession(false)
-                  resetForm()
-                  setIsVotingSessionCreated(false)
+                  cancelVoting()
                 }}
                 variant="destructive"
               >
-                Delete
+                Cancel
               </Button> */}
-            {votingData.status === 'pending' && (
+            {/* {votingData.status === 'pending' && (
               <Button
                 onClick={() => {
                   // setMakingVotingSession(true)
@@ -127,7 +120,7 @@ export default function SessionCreated({
               >
                 Edit
               </Button>
-            )}
+            )} */}
             {votingData.status === 'ended' && (
               <Button
                 onClick={() => {

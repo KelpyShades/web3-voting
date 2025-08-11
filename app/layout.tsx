@@ -1,8 +1,11 @@
 import type { Metadata, Viewport } from 'next'
-import { Geist, Poppins } from 'next/font/google'
+import { Geist, Poppins, Geist_Mono } from 'next/font/google'
 import './globals.css'
 import { ClerkProvider } from '@clerk/nextjs'
 import AuthWatcher from './AuthWatcher'
+import { startVotingEventsSync } from './ethers/events'
+import EventClient from './ethers/eventClient'
+
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -14,10 +17,10 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
 }
-// const geistMono = Geist_Mono({
-//   variable: "--font-geist-mono",
-//   subsets: ["latin"],
-// });
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 // const inter = Inter({
 //   variable: '--font-inter',
@@ -45,9 +48,10 @@ export default function RootLayout({
     <html lang="en">
       <ClerkProvider >
         <body
-          className={`${geistSans.variable} ${poppins.className} ${poppins.variable} antialiased`}
+          className={`${geistSans.variable} ${poppins.className} ${poppins.variable} ${geistMono.variable} antialiased`}
         >
           <AuthWatcher />
+          <EventClient />
           {children}
         </body>
       </ClerkProvider>

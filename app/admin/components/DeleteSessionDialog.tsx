@@ -13,6 +13,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useVotingStore } from '@/app/ZustandStores/VotingStore'
+import { deleteVotingSession } from '@/app/ethers/transactions'
 
 type DeleteFormValues = {
   title: string
@@ -47,6 +48,7 @@ export default function DeleteSessionDialog({
 
   const onSubmit = (data: DeleteFormValues) => {
     if (data.title === votingData.title) {
+      deleteVotingSession()
       onDelete()
       reset()
     }
@@ -67,10 +69,7 @@ export default function DeleteSessionDialog({
         <DialogHeader>
           <DialogTitle>Delete Voting Session</DialogTitle>
         </DialogHeader>
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col gap-4"
-        >
+        <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-4">
           <DialogDescription>
             Are you sure you want to delete this voting session? This action is
             irreversible.

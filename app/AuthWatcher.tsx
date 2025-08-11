@@ -5,10 +5,10 @@ import { useAuth } from '@clerk/nextjs'
 import { clearVotingStore } from '@/app/ZustandStores/VotingStore'
 
 export default function AuthWatcher() {
-  const { isSignedIn } = useAuth()
+  const { isSignedIn, isLoaded } = useAuth()
   useEffect(() => {
     console.log('isSignedIn', isSignedIn)
-    if (!isSignedIn) clearVotingStore()
-  }, [isSignedIn])
+    if (!isSignedIn && isLoaded) clearVotingStore()
+  }, [isSignedIn, isLoaded])
   return null
 }
