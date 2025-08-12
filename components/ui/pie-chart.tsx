@@ -29,7 +29,6 @@ type VotingChartConfig = {
   }
 }
 
-
 export function ChartPieDonutText() {
   const { votingData } = useVotingStore()
 
@@ -57,49 +56,65 @@ export function ChartPieDonutText() {
   return (
     // <div className="flex flex-1 h-full flex-col items-center justify-center">
     <ChartContainer config={votingChartConfig} className="aspect-square h-full">
-      <PieChart>
-        <ChartTooltip
-          cursor={false}
-          content={<ChartTooltipContent hideLabel />}
-        />
-        <Pie
-          data={votingChartData}
-          dataKey="votes"
-          nameKey="candidate"
-          innerRadius={60}
-          strokeWidth={5}
-        >
-          <Label
-            content={({ viewBox }) => {
-              if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
-                return (
-                  <text
-                    x={viewBox.cx}
-                    y={viewBox.cy}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                  >
-                    <tspan
-                      x={viewBox.cx}
-                      y={viewBox.cy}
-                      className="fill-foreground text-3xl font-bold"
-                    >
-                      {totalVotes.toLocaleString()}
-                    </tspan>
-                    <tspan
-                      x={viewBox.cx}
-                      y={(viewBox.cy || 0) + 24}
-                      className="fill-muted-foreground"
-                    >
-                      Votes
-                    </tspan>
-                  </text>
-                )
-              }
-            }}
-          />
-        </Pie>
-      </PieChart>
+      {(() => {
+        // Determine if we should render a neutral donut when there are
+        // zero votes during an ongoing session to avoid an empty chart.
+        const isPending = votingData.status === 'pending'
+        const showNeutralDonut = isPending && totalVotes === 0
+        const displayedData = showNeutralDonut
+          ? [
+              {
+                candidate: 'No votes yet',
+                votes: 1,
+              },
+            ]
+          : votingChartData
+        return (
+          <PieChart>
+            <ChartTooltip
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
+            />
+            <Pie
+              data={displayedData}
+              dataKey="votes"
+              nameKey="candidate"
+              innerRadius={60}
+              strokeWidth={5}
+            >
+              <Label
+                content={({ viewBox }) => {
+                  if (viewBox && 'cx' in viewBox && 'cy' in viewBox) {
+                    return (
+                      <text
+                        x={viewBox.cx}
+                        y={viewBox.cy}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                      >
+                        <tspan
+                          x={viewBox.cx}
+                          y={viewBox.cy}
+                          className="fill-foreground text-3xl font-bold"
+                        >
+                          {totalVotes.toLocaleString()}
+                        </tspan>
+                        <tspan
+                          x={viewBox.cx}
+                          y={(viewBox.cy || 0) + 24}
+                          className="fill-muted-foreground"
+                        >
+                          Votes
+                        </tspan>
+                      </text>
+                    )
+                  }
+                }}
+              />
+            </Pie>
+          </PieChart>
+        )
+      })()}
     </ChartContainer>
     // </div>
     // <Card className="flex flex-col">
