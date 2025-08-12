@@ -22,7 +22,7 @@ export async function createVotingSession(
     VOTING_ABI,
     adminWallet
   )
-
+  
   // Debug checks
   const onChainAdmin = await contract.admin()
   const votingCreated = await contract.votingCreated?.() // if this getter exists

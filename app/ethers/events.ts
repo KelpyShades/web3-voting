@@ -16,15 +16,14 @@ import VotingAbi from '@/blockchain/build/contracts/Voting.json'
 export const PROVIDER_WS_URL = 'ws://127.0.0.1:9545' // change if needed
 
 // Deployed Voting contract address (set after deploy)
-export const VOTING_CONTRACT_ADDRESS =
-  '0xC51b7a92b23b5cf986829969277EB8E069E8Af2c'
+export const VOTING_CONTRACT_ADDRESS = VotingAbi.networks[5777].address
 
 // Optional: Admin address (not strictly needed for event sync, but kept for clarity/config)
 export const ADMIN_ADDRESS = '0xe6de4c5c30077e36ef9b853ebedfffded0b8b65e'
 
 // Admin private key from Ganache/Truffle (first account is usually admin)
 export const ADMIN_PRIVATE_KEY =
-  '3cca3b660d99e90b110a2fc0dc792adf9c70d99048a8e503f9fe8a23fb13af4f'
+  '94040dc77b637609620e2bd7e338963d52b54cd3bd7cff4c48e341bcb7f996f0'
 
 // ===== Voting contract ABI (From Migration Artifacts) =====
 // ABI (Application Binary Interface) defines how to interact with the smart contract
