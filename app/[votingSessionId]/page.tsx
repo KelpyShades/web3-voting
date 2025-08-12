@@ -4,6 +4,7 @@ import { useVotingStore } from '../ZustandStores/VotingStore'
 import { ChartPieDonutText } from '@/components/ui/pie-chart'
 import CandidatesView from './components/CandidatesView'
 import VotingView from './components/VotingView'
+import { Timer } from '@/components/ui/timer'
 
 // chek url params
 // if marams ends with a [sessionId] we fetch the session data and redirect to the sessionId page

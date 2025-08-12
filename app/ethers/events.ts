@@ -17,7 +17,7 @@ export const PROVIDER_WS_URL = 'ws://127.0.0.1:9545' // change if needed
 
 // Deployed Voting contract address (set after deploy)
 export const VOTING_CONTRACT_ADDRESS =
-  '0xC51b7a92b23b5cf986829969277EB8E069E8Af2c'
+  '0x40F1756dF9B73e49C60675345139314cC65Fe28f'
 
 // Optional: Admin address (not strictly needed for event sync, but kept for clarity/config)
 export const ADMIN_ADDRESS = '0xe6de4c5c30077e36ef9b853ebedfffded0b8b65e'
