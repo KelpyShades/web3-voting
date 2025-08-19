@@ -74,7 +74,7 @@ contract Voting {
 
     // Mappings to store data
     mapping(uint => Candidate) private candidates; // Maps candidate ID to Candidate struct
-    mapping(uint => string) private voters;        // Maps voter index to voter ID string
+    mapping(uint => address) private voters;        // Maps voter index to voter ID string
 
     // State variables
     uint private votingId;        // ID of the current voting session
@@ -107,6 +107,13 @@ contract Voting {
      * @dev Event emitted when a voting session is deleted
      */
     event VotingDeleted();
+
+    /**
+     * @dev Event emitted when voting is started immediately
+     * @param newStartTime New start timestamp (current time)
+     * @param newEndTime New end timestamp
+     */
+    event VotingStartedImmediately(uint256 indexed newStartTime, uint256 indexed newEndTime);
 
 
     /**
@@ -156,6 +163,31 @@ contract Voting {
 
         // Emit event for the created voting session
         emit VotingCreated(votingId, votingStart, votingEnd, votingTitle, getCandidates());
+    }
+
+
+    /**
+     * @dev Start voting immediately and end at specific timestamp
+     * @param _endTimestamp Timestamp when voting should end
+     */
+    function startVotingImmediately(uint256 _endTimestamp) public {
+        // Verify that only the admin can start voting
+        require(msg.sender == admin, "Only admin can start voting.");
+        // Verify that a voting session exists
+        require(votingCreated, "Voting has not been created.");
+        // Verify that end time is in the future
+        require(_endTimestamp > block.timestamp, "End time must be in the future.");
+        // Verify minimum duration (e.g., at least 1 hour)
+        require(_endTimestamp >= block.timestamp + 3600, "Voting must last at least 1 hour.");
+        
+        uint256 currentTime = block.timestamp;
+        
+        // Update the dates to start now
+        votingStart = currentTime;
+        votingEnd = _endTimestamp;
+        
+        // Emit event for immediate start
+        emit VotingStartedImmediately(currentTime, _endTimestamp);
     }
 
     /**
@@ -266,9 +298,9 @@ contract Voting {
     /**
      * @dev Allows a voter to cast their vote for a candidate
      * @param _candidateID The ID of the candidate to vote for
-     * @param _voterId The unique identifier of the voter
+     * @param _voterAddress The unique identifier of the voter
      */
-    function vote(uint _candidateID, string memory _voterId) public {
+    function vote(uint _candidateID, address _voterAddress) public {
         // Verify that voting is currently active
         require(votingStart <= block.timestamp && votingEnd > block.timestamp, "Voting is not currently active.");
 
@@ -276,10 +308,10 @@ contract Voting {
         require(_candidateID > 0 && _candidateID <= countCandidates, "Invalid candidate ID.");
         
         // Verify that the voter has not already voted
-        require(!checkVote(_voterId), "You have already voted.");
+        require(!checkVote(_voterAddress), "You have already voted.");
 
-        // Record the voter's ID
-        voters[votingCount + 1] = _voterId;
+        // Record the voter's address
+        voters[votingCount + 1] = _voterAddress;
         // Increment the vote count
         votingCount++;
         
@@ -295,16 +327,16 @@ contract Voting {
 
     /**
      * @dev Checks if a voter has already voted
-     * @param _voterId The unique identifier of the voter
+     * @param _voterAddress The unique identifier of the voter
      * @return A boolean indicating whether the voter has already voted
      */
-    function checkVote(string memory _voterId) public view returns (bool) {
+    function checkVote(address _voterAddress) public view returns (bool) {
         // Verify that a voting session exists
         require(votingCreated, "Voting has not been created.");
         
-        // Check if the voter ID exists in the voters mapping
+        // Check if the voter address exists in the voters mapping
         for (uint i = 1; i <= votingCount; i++) {
-            if (keccak256(bytes(voters[i])) == keccak256(bytes(_voterId))) {
+            if (voters[i] == _voterAddress) {
                 return true; // Voter has already voted
             }
         }
@@ -317,6 +349,14 @@ contract Voting {
      */
     function getCountCandidates() public view returns (uint) {
         return countCandidates;
+    }
+
+    /**
+     * @dev Returns whether a voting session has been created
+     * @return bool indicating if voting session exists
+     */
+    function isVotingCreated() public view returns (bool) {
+        return votingCreated;
     }
 
     /**

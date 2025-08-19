@@ -22,13 +22,11 @@ export async function createVotingSession(
     VOTING_ABI,
     adminWallet
   )
-  
+
   // Debug checks
   const onChainAdmin = await contract.admin()
   const votingCreated = await contract.votingCreated?.() // if this getter exists
   const now = Math.floor(Date.now() / 1000)
-
-
 
   // Transform candidates to match contract struct
   const candidatesWithIds = candidates.map((candidate, index) => ({
@@ -67,8 +65,28 @@ export async function deleteVotingSession() {
   return await tx.wait()
 }
 
-export async function vote(candidateId: number, voterId: string) {
+export async function vote(
+  candidateId: number,
+  voterAddress: string,
+  voterKey: string
+) {
   // we will ask the user to authenticate with metamask later
+  const provider = new JsonRpcProvider('http://127.0.0.1:9545')
+  const voterWallet = new Wallet(voterKey, provider)
+  const contract = new Contract(
+    VOTING_CONTRACT_ADDRESS,
+    VOTING_ABI,
+    voterWallet
+  )
+
+  const tx = await contract.vote(candidateId, voterAddress)
+  return await tx.wait()
+}
+
+/**
+ * Start voting immediately and end at a specific time
+ */
+export async function startVotingImmediately(endDate: number) {
   const provider = new JsonRpcProvider('http://127.0.0.1:9545')
   const adminWallet = new Wallet(ADMIN_PRIVATE_KEY, provider)
   const contract = new Contract(
@@ -77,40 +95,31 @@ export async function vote(candidateId: number, voterId: string) {
     adminWallet
   )
 
+  // Verify admin
+  const onChainAdmin = await contract.admin()
+  if (onChainAdmin.toLowerCase() !== adminWallet.address.toLowerCase()) {
+    throw new Error(`Wrong admin key. contract admin = ${onChainAdmin}`)
+  }
 
-
-  const tx = await contract.vote(candidateId, voterId)
+  const tx = await contract.startVotingImmediately(endDate)
   return await tx.wait()
 }
 
-export async function testVote() {
 
-  // await (window as any).ethereum.request({
-  //   method: 'wallet_addEthereumChain',
-  //   params: [{
-  //     chainId: '0x539', // Hexadecimal for 1337
-  //     chainName: 'Local Dev Network',
-  //     rpcUrls: ['http://127.0.0.1:9545'],
-  //     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
-  //     // Optional: blockExplorerUrls: [...]
-  //   }]
-  // });
-  const provider = new BrowserProvider((window as any).ethereum)
-  await provider.send('eth_requestAccounts', [])
-  const signer = await provider.getSigner()
-  const contract = new Contract(VOTING_CONTRACT_ADDRESS, VOTING_ABI, signer)
-  // const tx = await contract.vote(candidateId)
+/**
+ * Checks if a voter has already voted
+ * @param voterAddress - The address of the voter to check
+ * @param voterKey - The private key of the voter to check
+ * @returns Promise that resolves to true if the voter has voted, false otherwise
+ */
+export async function checkVoterHasVoted(voterAddress: string, voterKey: string): Promise<boolean> {
+  const provider = new JsonRpcProvider('http://127.0.0.1:9545')
+  const voterWallet = new Wallet(voterKey, provider)
+  const contract = new Contract(
+    VOTING_CONTRACT_ADDRESS,
+    VOTING_ABI,
+    voterWallet
+  )
+  const res: boolean = await contract.checkVote(voterAddress)
+  return Boolean(res)
 }
-
-// export async function cancelVoting() {
-//   const provider = new JsonRpcProvider('http://127.0.0.1:9545')
-//   const adminWallet = new Wallet(ADMIN_PRIVATE_KEY, provider)
-//   const contract = new Contract(
-//     VOTING_CONTRACT_ADDRESS,
-//     VOTING_ABI,
-//     adminWallet
-//   )
-
-//   const tx = await contract.cancelVoting()
-//   return await tx.wait()
-// }

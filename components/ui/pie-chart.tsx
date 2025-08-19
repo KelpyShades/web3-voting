@@ -60,7 +60,8 @@ export function ChartPieDonutText() {
         // Determine if we should render a neutral donut when there are
         // zero votes during an ongoing session to avoid an empty chart.
         const isPending = votingData.status === 'pending'
-        const showNeutralDonut = isPending && totalVotes === 0
+        const isOngoing = votingData.status === 'ongoing'
+        const showNeutralDonut = (isPending || isOngoing) && totalVotes === 0
         const displayedData = showNeutralDonut
           ? [
               {

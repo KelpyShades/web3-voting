@@ -19,6 +19,8 @@ import { useVoterStore } from '@/app/ZustandStores/VoterStore'
 import DeleteSessionDialog from '@/app/admin/components/DeleteSessionDialog'
 import { useState } from 'react'
 import { SelectForm } from './VoteForm'
+import { createClient } from '@/utils/supabase/client'
+import { checkVoterHasVoted } from '@/app/ethers/transactions'
 
 const votingIdSchema = z.object({
   votingId: z
@@ -33,8 +35,9 @@ type VotingIdFormValues = z.infer<typeof votingIdSchema>
 
 export default function VoteDialog() {
   const { votingData } = useVotingStore()
+  const supabase = createClient()
   const [isVoting, setIsVoting] = useState(false)
-  // const { voterId, setVoterId } = useVoterStore()
+  const { voterId, setVoter, getVoterKey } = useVoterStore()
   if (!votingData) return null
   const {
     register,
@@ -47,11 +50,35 @@ export default function VoteDialog() {
       votingId: '',
     },
   })
-  const onSubmit = (data: VotingIdFormValues) => {
+  const onSubmit = async (data: VotingIdFormValues) => {
+    const { data: voter, error } = await supabase
+      .from('voters')
+      .select('*')
+      .eq('index_number', data.votingId.trim().toUpperCase())
+      .limit(1)
+      .maybeSingle()
+    if (error) {
+      if (error.details.includes('The result contains 0 rows')) {
+        alert('Voter ID not found. Please check your ID and try again.')
+      }
+      return
+    }
+    if (voter === null) {
+      alert('Voter ID not found. Please check your ID and try again.')
+      return
+    }
+    if (voter) {
+      const voterAddress = voter.address
+
+      const hasVoted = await checkVoterHasVoted(voterAddress, voter.private_key)
+      if (hasVoted) {
+        alert('You have already voted')
+        return
+      }
+      // setVoterId(data.votingId)
+    }
+    setVoter(data.votingId, voter.address, voter.private_key)
     setIsVoting(true)
-    // setVoterId(data.votingId)
-    // request to server to check if the voter is eligible to vote
-    // if the voter is eligible to vote, show the vote dialog
   }
   return (
     <Dialog
@@ -67,7 +94,7 @@ export default function VoteDialog() {
       </DialogTrigger>
       <DialogContent>
         {isVoting ? (
-          <div className="flex flex-col gap-4 w-full">
+          <div className="flex w-full flex-col gap-4">
             <DialogHeader>
               <DialogTitle>Vote</DialogTitle>
             </DialogHeader>

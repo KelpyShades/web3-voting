@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Timer } from '@/components/ui/timer'
 import VoteDialog from './VoteDialog'
-import { testVote } from '@/app/ethers/transactions'
 
 export default function VotingView() {
   const { votingData } = useVotingStore()
@@ -93,21 +92,18 @@ export default function VotingView() {
         >
           Copy Link
         </Button>
-        {/* {votingSession.status === 'pending' && (
-      <Button disabled className="w-[40%]">
-        Vote
-      </Button>
-    )}
-    {votingSession.status === 'ongoing' && (
-      <Button className="w-[40%]">Vote</Button>
-    )}
-    {votingSession.status === 'ended' && (
-      <Button disabled className="w-[40%]">
-        Vote
-      </Button>
-    )} */}
+        {votingData.status === 'pending' && (
+          <Button disabled className="w-[40%]">
+            Vote
+          </Button>
+        )}
+        {votingData.status === 'ongoing' && <VoteDialog />}
+        {votingData.status === 'ended' && (
+          <Button disabled className="w-[40%]">
+            Vote
+          </Button>
+        )}
         {/* <Button onClick={testVote}>Test Vote</Button> */}
-        <VoteDialog />
       </CardFooter>
     </Card>
   )

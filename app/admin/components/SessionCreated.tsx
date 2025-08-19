@@ -8,6 +8,8 @@ import {
 import { useVotingStore } from '@/app/ZustandStores/VotingStore'
 import DeleteSessionDialog from './DeleteSessionDialog'
 import { Button } from '@/components/ui/button'
+import { redirect } from 'next/navigation'
+import StartVoting from './StartVoting'
 // import { cancelVoting } from '@/app/ethers/transactions'
 
 export default function SessionCreated({
@@ -39,7 +41,6 @@ export default function SessionCreated({
                 <p className="text-base capitalize">{votingData.status}</p>
               </div>
             </div>
-
 
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -95,38 +96,22 @@ export default function SessionCreated({
             Copy Link
           </Button>
           <div className="flex w-full justify-end gap-4">
-            <DeleteSessionDialog
-              onDelete={() => {
-                // setMakingVotingSession(false)
-                // setIsVotingSessionCreated(false)
-                resetForm()
-              }}
-            />
-            {/* <Button
-                onClick={() => {
-                  cancelVoting()
-                }}
-                variant="destructive"
-              >
-                Cancel
-              </Button> */}
-            {/* {votingData.status === 'pending' && (
-              <Button
-                onClick={() => {
-                  // setMakingVotingSession(true)
-                  // setIsVotingSessionCreated(true)
-                  setIsVotingSessionCreated(false)
-                }}
-              >
-                Edit
-              </Button>
-            )} */}
+            {votingData.status === 'pending' && (
+              <>
+                <DeleteSessionDialog
+                  onDelete={() => {
+                    // setMakingVotingSession(false)
+                    // setIsVotingSessionCreated(false)
+                    resetForm()
+                  }}
+                />
+                <StartVoting />
+              </>
+            )}
             {votingData.status === 'ended' && (
               <Button
                 onClick={() => {
-                  // setMakingVotingSession(true)
-                  // setIsVotingSessionCreated(true)
-                  // setIsVotingSessionCreated(false)
+                  redirect(`${window.location.origin}/${votingData.id}`)
                 }}
               >
                 View Results
