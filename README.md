@@ -1,4 +1,4 @@
-## Web3 Voting dApp (Next.js + Clerk + Truffle)
+## Web3 Voting dApp (Next.js + Clerk + Truffle + Ethers)
 
 A full‑stack starter for creating secure, transparent voting sessions. The web app is built with Next.js App Router, Clerk authentication, Tailwind CSS, and Zustand for state. A Solidity `Voting` smart contract and Truffle configuration are included for on‑chain voting.
 
@@ -6,18 +6,19 @@ A full‑stack starter for creating secure, transparent voting sessions. The web
 - **Authentication**: Clerk with MetaMask sign‑in; `/admin` routes protected by middleware
 - **Admin dashboard**: Create a voting session with title, description, time window, and candidates
 - **Form validation**: `react-hook-form` + `zod` (date sanity checks, unique candidate names, etc.)
-- **State management**: Zustand store with localStorage persistence
-- **Smart contracts**: Solidity `Voting` contract (Truffle, solc 0.5.15) with candidate management and time‑boxed voting
+- **State management**: Zustand store with localStorage persistence (hydrates from chain events)
+- **Smart contracts**: Solidity `Voting` contract (Truffle, solc 0.8.0) with candidate management and time‑boxed voting
+- **Blockchain integration**: Ethers v6 for on‑chain admin actions and live event syncing
 - **UI**: Shadcn‑style components, Tailwind CSS v4, dark/light theme
 
-Note: The current UI persists sessions locally (Zustand) and does not yet submit blockchain transactions. The Truffle project is provided to wire up on‑chain flows next.
+Note: Admin create/delete now execute on‑chain and the UI live‑syncs from contract events. End‑user voting in the UI is still a local placeholder; wiring the vote action to the contract is the next step.
 
 ### Tech Stack
 - Next.js 15 (App Router), React 19, TypeScript
 - Clerk (`@clerk/nextjs`) for auth and MetaMask sign‑in
 - Tailwind CSS v4
 - Zustand for client state/persistence
-- Truffle for contract tooling; Solidity 0.5.15
+- Truffle for contract tooling; Solidity 0.8.0; Ethers v6
 
 ---
 
@@ -25,35 +26,44 @@ Note: The current UI persists sessions locally (Zustand) and does not yet submit
 
 ```
 app/
+  [votingSessionId]/
+    components/
+      CandidatesView.tsx
+      VoteDialog.tsx
+      VoteForm.tsx
+      VotingView.tsx
+    layout.tsx               # Voting layout
+    page.tsx                 # Voting page (hydrate from store/events)
   admin/
     components/
-      VotingForm.tsx        # Admin form to create a voting session
-      SessionCreated.tsx    # Success screen after creating a session
-      DeleteSessionDialog.tsx
-    layout.tsx              # Admin layout with header and UserButton
-    page.tsx                # Admin dashboard (role-gated)
-    [sessionId]/page.tsx    # Placeholder for session-specific admin view
-  voting/
-    page.tsx                # Placeholder: route that handles session routing
-    [sessionId]/page.tsx    # Placeholder: voting view per session
+      VotingForm.tsx         # Admin form to create a voting session (on‑chain)
+      SessionCreated.tsx     # Success screen after creating a session
+      DeleteSessionDialog.tsx# Deletes session on‑chain
+    layout.tsx               # Admin layout with header and UserButton
+    page.tsx                 # Admin dashboard (role-gated)
+  ethers/
+    events.ts                # Ethers event sync → Zustand
+    transactions.ts          # Ethers admin tx (create/delete); vote stub
+    eventClient.tsx          # Starts event sync on client
   ZustandStores/
-    VotingStore.ts          # Zustand store for session data
-  AuthWatcher.tsx           # Clears persisted store on sign-out
-  layout.tsx                # Root layout; wraps app in ClerkProvider
-  page.tsx                  # Marketing/homepage with MetaMask sign-in CTA
+    VotingStore.ts           # Session state (projection of chain state)
+    VoterStore.ts            # Local voter id store
+  AuthWatcher.tsx            # Clears persisted store on sign-out
+  layout.tsx                 # Root layout; wraps app in ClerkProvider + EventClient
+  page.tsx                   # Marketing/homepage with MetaMask sign-in CTA
 
-components/ui/              # Button, Card, Dialog, etc. (shadcn-style)
-lib/utils.ts                # Utility (cn)
-middleware.ts               # Protects /admin routes via Clerk
-next.config.ts              # Next.js config
+components/ui/               # Button, Card, Dialog, etc. (shadcn-style)
+lib/utils.ts                 # Utility (cn)
+middleware.ts                # Protects /admin routes via Clerk
+next.config.ts               # Next.js config
 
-reactproject/
-  contracts/voting.sol      # Solidity contracts (Voting, Migrations)
-  truffle-config.js         # Truffle network/compiler config (port 9545)
-  build/contracts/*.json    # ABIs after compile/migrate
+blockchain/
+  contracts/voting.sol       # Solidity contracts (Voting, Migrations)
+  migrations/                # Truffle migration scripts
+  truffle-config.js          # Truffle network/compiler config (port 9545)
+  build/contracts/*.json     # ABIs after compile/migrate
 
-server.js                   # Example Web3 connection to local chain (9545)
-browser/launch.json         # Firefox debug configuration (optional)
+server.js                    # Example Web3 connection to local chain (9545)
 ```
 
 ---
@@ -65,39 +75,38 @@ browser/launch.json         # Firefox debug configuration (optional)
 - If authenticated, links to `/admin`; otherwise shows MetaMask sign-in via Clerk
 
 ### Admin (`app/admin/page.tsx` and `app/admin/components/*`)
-- Role-gated: reads `user.publicMetadata.role` from Clerk; only `admin` may access
-- `VotingForm.tsx` creates a session in the client store with:
-  - Title, description
-  - Start/end timestamps (must be future start, end after start)
-  - 2+ candidate names, case-insensitive uniqueness
-- On success, shows `SessionCreated`
+- **Role-gated**: reads `user.publicMetadata.role` from Clerk; only `admin` may access
+- **Create session (on‑chain)**: `VotingForm.tsx` validates input (dates, unique candidate names) then calls `createVoting(...)` via ethers
+- **Delete session (on‑chain)**: `DeleteSessionDialog.tsx` calls `deleteVoting()`
+- **SessionCreated**: shows details and a shareable link `/{votingId}`
 
-### Voting routes (`app/voting/*`)
-- Placeholders for user voting flow and session views. Intended to read the created session (from store or on‑chain) and allow participants to cast votes.
+### Voting route (`app/[votingSessionId]/*`)
+- Renders session details, countdowns, candidate list and charts from the store (which is hydrated by contract events)
+- Vote dialog exists but currently updates only local store; contract vote wiring is pending
 
 ### Authentication & Protection
 - Clerk middleware (`middleware.ts`) protects `/admin(.*)` and requires auth
 - `AuthWatcher.tsx` clears any persisted session data if the user signs out
 
 ### State Management
-- `Zustand` store (`app/ZustandStores/VotingStore.ts`) persists session data under `voting-session` in `localStorage`
-- Exposes helpers to create sessions and manage candidate count
+- `Zustand` store (`app/ZustandStores/VotingStore.ts`) persists under `voting-session` and acts as a projection of on‑chain state
+- `EventClient` boots `startVotingEventsSync()` to hydrate from past events and subscribe to `VotingCreated`, `Voted`, and `VotingDeleted`
 
 ---
 
 ## Smart Contracts (Truffle)
 
-Solidity: `reactproject/contracts/voting.sol` (pragma 0.5.15)
+Solidity: `blockchain/contracts/voting.sol` (pragma 0.8.0)
 
-- `addCandidate(name, party)` (pre‑start only): Registers a candidate; returns candidate ID
-- `setDates(start, end)`: One‑time configuration; `start > now`, `end > start`
-- `vote(candidateId)`: Enforces time window, prevents double voting, increments chosen candidate's count, and emits `Voted(candidateId)`
-- `checkVote()`: Returns whether `msg.sender` has already voted
-- `getCountCandidates()`, `getCandidate(id)`, `getDates()` helpers
+- `createVoting(votingId, title, start, end, Candidate[])` (admin only): sets dates, registers candidates, emits `VotingCreated`
+- `deleteVoting()`/`cancelVoting()` (admin only, not during active voting): clears state, emits `VotingDeleted`
+- `vote(candidateId, voterId)` (any): enforces time window and double‑vote prevention, increments tally, emits `Voted(candidateId, newCount)`
+- `checkVote(voterId)` (view): returns whether the voter has already voted
+- `getCountCandidates()`, `getCandidate(id)`, `getCandidates()`, `getDates()` (several read functions are admin‑gated)
 
-Truffle config (`reactproject/truffle-config.js`):
-- Network `development` at `127.0.0.1:9545` (compatible with `truffle develop`)
-- Compiler `solc` version `0.5.15`
+Truffle config (`blockchain/truffle-config.js`):
+- Network `development` at `127.0.0.1:9545` (compatible with `truffle develop`/Ganache)
+- Compiler `solc` version `0.8.0`
 
 ---
 
@@ -131,66 +140,53 @@ CLERK_SECRET_KEY=sk_test_...
 }
 ```
 
+3) Compile and deploy contracts (local chain)
+```
+cd blockchain
+truffle develop
+truffle(develop)> compile
+truffle(develop)> migrate --reset
+```
+Artifacts will appear in `blockchain/build/contracts/` and include a deployed address at `Voting.json.networks[5777].address`.
+
 4) Run the Next.js app
 ```
 npm run dev
 ```
 
-5) Compile and deploy contracts (local chain)
-```
-cd reactproject
-truffle develop
-truffle(develop)> compile
-truffle(develop)> migrate --reset
-```
-Artifacts will appear in `reactproject/build/contracts/`.
-
 ---
 
-## Using the Contract in the App (next step)
+## On‑chain Integration in the App
 
-The UI is currently using a client store as a placeholder. To enable on‑chain voting:
-- Install a web3 library in the web app (choose one):
-  - `npm i ethers` (recommended) or `npm i web3`
-- Load the contract ABI and address from `reactproject/build/contracts/Voting.json`
-- Connect a provider (e.g., MetaMask’s injected provider) and a signer
-- Replace store actions (e.g., create session, cast vote) with contract calls
+- Ethers v6 is already integrated. The app reads artifacts from `blockchain/build/contracts/Voting.json` and uses:
+  - `WebSocketProvider` at `ws://127.0.0.1:9545` for live events (`VotingCreated`, `Voted`, `VotingDeleted`) → store sync
+  - `JsonRpcProvider` at `http://127.0.0.1:9545` for admin transactions
+- Admin transactions (`app/ethers/transactions.ts`):
+  - `createVotingSession(...)` → `createVoting(...)`
+  - `deleteVotingSession()` → `deleteVoting()`
+  - `vote(candidateId, voterId)` exists but the UI vote dialog currently updates only local store
+- Configuration (`app/ethers/events.ts`):
+  - `VOTING_CONTRACT_ADDRESS` is sourced from the artifact (`Voting.json.networks[5777].address`)
+  - `PROVIDER_WS_URL` defaults to `ws://127.0.0.1:9545`
 
-Example outline (ethers v6):
-```ts
-import { BrowserProvider, Contract } from 'ethers'
-import votingArtifact from '@/../reactproject/build/contracts/Voting.json'
-
-const provider = new BrowserProvider((window as any).ethereum)
-const signer = await provider.getSigner()
-const contract = new Contract(
-  deployedAddress,
-  votingArtifact.abi,
-  signer
-)
-
-await contract.setDates(startTs, endTs)
-await contract.addCandidate('Alice', 'Independent')
-await contract.vote(1)
-```
-
-Note: `server.js` shows connecting `web3` to `http://127.0.0.1:9545`, but the web app does not currently import it. Prefer client‑side connection via MetaMask for transactions initiated by users, and keep private keys client‑side.
+Security note: The sample includes a hard‑coded local dev private key for admin transactions. Do not use this in production. Prefer MetaMask/Clerk‑gated actions or move secrets to a secure server/API.
 
 ---
 
 ## Troubleshooting
-- Clerk auth errors: ensure `.env.local` keys are correct and the app origin is allowed in Clerk
-- `admin` page shows “not authorized”: set your Clerk user `publicMetadata.role="admin"`
-- Truffle compile errors: use Node LTS and ensure `solc 0.5.15` is used (per `truffle-config.js`)
-- Cannot connect to chain: start `truffle develop` (port 9545) or configure Ganache to 9545
+- **Clerk auth errors**: ensure `.env.local` keys are correct and the app origin is allowed in Clerk
+- **Unauthorized admin**: set your Clerk user `publicMetadata.role="admin"`
+- **Truffle compile errors**: use Node LTS and ensure `solc 0.8.0` is used (per `blockchain/truffle-config.js`)
+- **Event sync not working**: make sure your local node exposes WebSocket at `ws://127.0.0.1:9545` (Ganache/Anvil/Hardhat). Adjust `PROVIDER_WS_URL` if needed
+- **Contract address undefined**: verify `blockchain/build/contracts/Voting.json` has `networks[5777].address` after migrate, and that the app points to that artifact path
 
 ---
 
 ## Roadmap
-- Wire up contract ABI/address in the Next.js app and replace Zustand-only flow
-- Add read views for session status and candidate tallies
-- Add events/subscriptions to reflect live vote counts
-- Persist sessions to a backend or the blockchain entirely
+- Wire the UI vote dialog to `vote(candidateId, voterId)` on‑chain
+- Replace hard‑coded admin key with MetaMask or a secure backend flow
+- Add read views for session status and candidate tallies (partially done)
+- Persist sessions to a backend or fully on‑chain
 - E2E tests for critical flows
 
 ---
