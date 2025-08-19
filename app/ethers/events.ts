@@ -23,12 +23,11 @@ export const ADMIN_ADDRESS = '0xe6de4c5c30077e36ef9b853ebedfffded0b8b65e'
 
 // Admin private key from Ganache/Truffle (first account is usually admin)
 export const ADMIN_PRIVATE_KEY =
-  '94040dc77b637609620e2bd7e338963d52b54cd3bd7cff4c48e341bcb7f996f0'
+  '3cca3b660d99e90b110a2fc0dc792adf9c70d99048a8e503f9fe8a23fb13af4f'
 
 // ===== Voting contract ABI (From Migration Artifacts) =====
 // ABI (Application Binary Interface) defines how to interact with the smart contract
 export const VOTING_ABI = VotingAbi.abi
-
 
 // ===== Local types for UI sync =====
 // Define the structure for a candidate in the UI
@@ -94,7 +93,7 @@ function setVotingStoreSession(
   const { createVotingSession, setIsVotingSessionCreated } =
     useVotingStore.getState()
   const current = useVotingStore.getState().votingData
-  
+
   // Merge new data with existing data
   const merged: UIVotingSession = {
     id: data.id ?? (current.id as number) ?? 0,
@@ -128,7 +127,7 @@ function setVotingStoreSession(
     candidatesCount: data.candidatesCount ?? current.candidatesCount ?? 0,
     candidates: data.candidates ?? (current.candidates as any) ?? [],
   }
-  
+
   // Persist in the same shape as store expects
   createVotingSession({
     id: merged.id,
@@ -140,7 +139,7 @@ function setVotingStoreSession(
     candidatesCount: merged.candidatesCount,
     candidates: merged.candidates,
   } as any)
-  
+
   // Update the flag indicating a session is created
   setIsVotingSessionCreated(true)
 }
@@ -155,18 +154,41 @@ function clearVotingStoreSession() {
   setIsVotingSessionCreated(false)
 }
 
+// Simple and reliable check for active voting session
+async function hasActiveVotingSession(): Promise<boolean> {
+  if (!contract) return false
+
+  try {
+    return await contract.isVotingCreated()
+  } catch (error) {
+    console.error('Error checking voting session:', error)
+    return false
+  }
+}
+
 // ===== Initial fetch from past events =====
 /**
  * Loads the most recent voting session from blockchain events history
  */
 async function hydrateFromPastEvents() {
   if (!contract) return
-  
+
+  // Check if there's an active voting session using the new getter
+  const hasActiveSession = await hasActiveVotingSession()
+
+  if (!hasActiveSession) {
+    console.log('No active voting session found')
+    clearVotingStoreSession()
+    return
+  }
+
   // Query for all VotingCreated events
   const createdLogs = await contract.queryFilter(
     contract.filters.VotingCreated()
   )
-  
+
+  console.log('createdLogs', createdLogs)
+
   // If no voting sessions found, clear the store
   if (!createdLogs.length) {
     clearVotingStoreSession()
@@ -183,7 +205,7 @@ async function hydrateFromPastEvents() {
       Array<{ id: bigint; name: string; party: string; voteCount: bigint }>,
     ]
   }
-
+  console.log('last', last)
   // Extract voting session details
   const votingId = Number(last.args[0])
   const start = Number(last.args[1])
@@ -205,7 +227,7 @@ async function hydrateFromPastEvents() {
     contract.filters.Voted(),
     fromBlock
   )
-  
+
   // Update vote counts for each candidate
   for (const log of votedLogs) {
     const l = log as unknown as Log & { args: readonly [bigint, bigint] }
@@ -254,9 +276,6 @@ function attachEventListeners() {
         voteCount: bigint
       }>
     ) => {
-      console.log(votingStart)
-      console.log(votingEnd)
-
       // Convert candidate data to UI format
       const candidates: UICandidate[] = candidatesRaw.map((c) => ({
         id: Number(c.id),
@@ -264,7 +283,7 @@ function attachEventListeners() {
         party: c.party,
         voteCount: Number(c.voteCount),
       }))
-      
+
       // Update the store with the new voting session
       setVotingStoreSession({
         id: Number(votingId),
@@ -278,30 +297,37 @@ function attachEventListeners() {
       })
     }
   )
+  // VotingStartedImmediately(currentTime, _endTimestamp);
+  contract.on(
+    'VotingStartedImmediately',
+    (currentTime: bigint, _endTimestamp: bigint) => {
+      setVotingStoreSession({
+        startTime: Number(currentTime),
+        endTime: Number(_endTimestamp),
+        status: computeStatus(Number(currentTime), Number(_endTimestamp)),
+      })
+    }
+  )
 
   // Voted: update a candidate's tally when a new vote is cast
   contract.on('Voted', (candidateId: bigint, voteCount: bigint) => {
     const { votingData } = useVotingStore.getState()
     if (!votingData?.candidates?.length) return
-    
+
     // Update the vote count for the specific candidate
     const updated = votingData.candidates.map((c) =>
       c.id === Number(candidateId) ? { ...c, voteCount: Number(voteCount) } : c
     )
-    
+
     // Recalculate total votes
     const total = recomputeTotalVotes(updated)
-    
+
     // Update the store
     setVotingStoreSession({
       candidates: updated,
       candidatesCount: updated.length,
       voteCount: total,
     })
-
-    // Optional: refresh current voter's status (requires their ID)
-    const voterId = useVoterStore.getState().voterId
-    if (voterId) void checkVoterHasVoted(voterId).catch(() => {})
   })
 
   // VotingDeleted: clear session when a voting is deleted
@@ -332,7 +358,7 @@ export async function startVotingEventsSync(options?: {
 }): Promise<void> {
   // Prevent multiple initializations
   if (started) return
-  
+
   // Get configuration values
   const ws = options?.wsUrl ?? PROVIDER_WS_URL
   const address = options?.contractAddress ?? VOTING_CONTRACT_ADDRESS
@@ -368,16 +394,4 @@ export function stopVotingEventsSync(): void {
  */
 export function getVotingContract(): Contract | null {
   return contract
-}
-
-/**
- * Checks if a voter has already voted
- * @param voterId - The ID of the voter to check
- * @returns Promise that resolves to true if the voter has voted, false otherwise
- */
-export async function checkVoterHasVoted(voterId: string): Promise<boolean> {
-  if (!contract) throw new Error('Contract not initialized')
-  // Directly queries the contract's checkVote(voterId)
-  const res: boolean = await contract.checkVote(voterId)
-  return Boolean(res)
 }

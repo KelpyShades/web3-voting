@@ -77,7 +77,7 @@ export default function DeleteSessionDialog({
             <br />
             <span className="text-sm">
               Enter{' "'}
-              <span className="font-bold text-black">{votingData.title}</span>
+              <span className="font-bold">{votingData.title}</span>
               {'" '}
               to delete it.
             </span>

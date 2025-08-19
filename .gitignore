@@ -20,7 +20,9 @@
 # production
 /build
 
+
 /venv/
+
 # misc
 .DS_Store
 *.pem
@@ -44,4 +46,5 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 
-#voting
+blockchain/build/contracts/Migrations.json
+blockchain/build/contracts/Voting.json
