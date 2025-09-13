@@ -27,7 +27,9 @@ import { useVotingStore } from '@/app/ZustandStores/VotingStore'
 import { DialogClose, DialogFooter } from '@/components/ui/dialog'
 import { useVoterStore } from '@/app/ZustandStores/VoterStore'
 import { useState } from 'react'
-import { vote } from '@/app/ethers/transactions'
+import {
+  vote,
+} from '@/app/ethers/transactions'
 
 const FormSchema = z.object({
   candidate: z.string().min(1, {
@@ -44,13 +46,14 @@ export function SelectForm() {
   })
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    // vote(parseInt(data.candidate))
+
     vote(
       parseInt(data.candidate),
       getVoterAddress().trim(),
       getVoterKey().trim()
     )
-    setVoted(true)
+
+     setVoted(true)
   }
 
   function voteClose() {

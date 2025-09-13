@@ -1,3 +1,5 @@
+require('dotenv').config()
+const HDWalletProvider = require('@truffle/hdwallet-provider')
 /**
  * Use this file to configure your truffle project. It's seeded with some
  * common settings for different networks and features like migrations,
@@ -62,6 +64,16 @@ module.exports = {
       host: '127.0.0.1', // Your local machine
       port: 9545, // The port for 'truffle develop'
       network_id: '*', // Match any network id
+    },
+    sepolia: {
+      provider: () =>
+        new HDWalletProvider([process.env.PRIVATE_KEY], process.env.INFURA_URL),
+      network_id: 11155111, // Sepolia's network ID
+      gas: 4000000, // Adjust the gas limit as per your requirements
+      gasPrice: 10000000000, // Set the gas price to an appropriate value
+      confirmations: 2, // Set the number of confirmations needed for a transaction
+      timeoutBlocks: 200, // Set the timeout for transactions
+      skipDryRun: true // Skip the dry run option
     },
     // Useful for testing. The `development` name is special - truffle uses it by default
     // if it's defined here and no other network is specified at the command line.

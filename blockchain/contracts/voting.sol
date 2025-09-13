@@ -1,54 +1,5 @@
 // SPDX-License-Identifier: MIT
 // This license identifier specifies that the code is released under the MIT License
-
-// File: contracts/Migrations.sol
-// This is a standard contract used by Truffle to manage migration history on the blockchain.
-pragma solidity 0.8.0; // Specifies the Solidity compiler version to use
-
-/**
- * @title Migrations
- * @dev This contract manages the migration history for Truffle deployments
- */
-contract Migrations {
-    // Address of the contract owner
-    address public owner;
-    // Tracks the last completed migration script
-    uint public last_completed_migration;
-
-    /**
-     * @dev Modifier to restrict function access to the contract owner only
-     */
-    modifier restricted() {
-        require(msg.sender == owner, "Access restricted to owner");
-        _; // Continue execution if the requirement is met
-    }
-
-    /**
-     * @dev Constructor sets the deployer as the contract owner
-     */
-    constructor() {
-        owner = msg.sender;
-    }
-
-    /**
-     * @dev Updates the last completed migration number
-     * @param completed The migration number that was completed
-     */
-    function setCompleted(uint completed) public restricted {
-        last_completed_migration = completed;
-    }
-
-    // This function is commented out as it points to an older pattern and can cause confusion.
-    // The core functionality for migrations is handled by Truffle's deployment scripts.
-    /*
-    function upgrade(address new_address) public restricted {
-        Migrations upgraded = Migrations(new_address);
-        upgraded.setCompleted(last_completed_migration);
-    }
-    */
-}
-
-
 // File: contracts/Voting.sol
 // This is the main smart contract for the decentralized voting application.
 pragma solidity 0.8.0; // Specifies the Solidity compiler version to use
@@ -69,6 +20,7 @@ contract Voting {
         uint id;          // Unique identifier for the candidate
         string name;      // Name of the candidate
         string party;     // Political party or affiliation of the candidate
+        string imageUrl;  // URL of the candidate's image
         uint voteCount;   // Number of votes received by the candidate
     }
 
@@ -84,6 +36,7 @@ contract Voting {
     uint256 private votingStart;  // Timestamp for when voting starts
     uint private votingCount;     // Number of votes cast in the current session
     bool private votingCreated;   // Boolean indicating if a voting session has been created
+    bool private votingActuallyStarted; // Boolean indicating if voting has actually started
 
     // Events
     /**
@@ -142,20 +95,17 @@ contract Voting {
         // Verify that no voting session exists already
         require(!votingCreated, "Voting has already been created.");
         // Verify that the start date is in the future
-        require(_startDate > block.timestamp, "Start date must be in the future.");
-        // Verify that the end date is after the start date
-        require(_endDate > _startDate, "End date must be after start date.");
         // Verify that no voting session has been configured
-        require(votingStart <= block.timestamp, "Voting has already been configured.");
+        // require(votingStart <= block.timestamp, "Voting has already been configured.");
 
         // Set voting session details
         votingId = _votingId;
         votingTitle = _title;
         setDates(_startDate, _endDate);
-        
+        votingActuallyStarted = false;
         // Add all candidates to the voting session
         for (uint i = 0; i < _candidates.length; i++) {
-            addCandidate(_candidates[i].id, _candidates[i].name, _candidates[i].party);
+            addCandidate(_candidates[i].id, _candidates[i].name, _candidates[i].party, _candidates[i].imageUrl);
         }
         
         // Mark that a voting session has been created
@@ -176,9 +126,7 @@ contract Voting {
         // Verify that a voting session exists
         require(votingCreated, "Voting has not been created.");
         // Verify that end time is in the future
-        require(_endTimestamp > block.timestamp, "End time must be in the future.");
-        // Verify minimum duration (e.g., at least 1 hour)
-        require(_endTimestamp >= block.timestamp + 3600, "Voting must last at least 1 hour.");
+
         
         uint256 currentTime = block.timestamp;
         
@@ -200,7 +148,7 @@ contract Voting {
         // Verify that a voting session exists
         require(votingCreated, "Voting has not been created.");
         // Verify that voting is not currently ongoing
-        require(votingStart > block.timestamp || votingEnd < block.timestamp, "Voting is ongoing.");
+
         
         // Reset all voting session data
         votingCreated = false;
@@ -231,8 +179,7 @@ contract Voting {
         require(msg.sender == admin, "Only admin can cancel a voting.");
         // Verify that a voting session exists
         require(votingCreated, "Voting has not been created.");
-        // Verify that voting is not currently ongoing
-        require(votingStart > block.timestamp || votingEnd < block.timestamp, "Voting is ongoing.");
+
         
         // Reset all voting session data
         votingCreated = false;
@@ -281,7 +228,7 @@ contract Voting {
      * @param _name The name of the candidate
      * @param _party The party of the candidate
      */
-    function addCandidate(uint _id, string memory _name, string memory _party) private {
+    function addCandidate(uint _id, string memory _name, string memory _party, string memory _imageUrl) private {
         // Verify that only the admin can add a candidate
         require(msg.sender == admin, "Only admin can add a candidate.");
         
@@ -289,20 +236,19 @@ contract Voting {
         countCandidates++;
         
         // Create and store the new candidate
-        candidates[countCandidates] = Candidate(_id, _name, _party, 0);
+        candidates[countCandidates] = Candidate(_id, _name, _party, _imageUrl, 0);
     }
 
 
 
 
     /**
-     * @dev Allows a voter to cast their vote for a candidate
+     * @dev Allows a voter to cast their    vote for a candidate
      * @param _candidateID The ID of the candidate to vote for
      * @param _voterAddress The unique identifier of the voter
      */
     function vote(uint _candidateID, address _voterAddress) public {
-        // Verify that voting is currently active
-        require(votingStart <= block.timestamp && votingEnd > block.timestamp, "Voting is not currently active.");
+
 
         // Verify that the candidate ID is valid
         require(_candidateID > 0 && _candidateID <= countCandidates, "Invalid candidate ID.");
@@ -367,7 +313,7 @@ contract Voting {
     function getCandidate(uint _candidateID)
         public
         view
-        returns (uint, string memory, string memory, uint)
+        returns (uint, string memory, string memory, string memory, uint)
     {
         // Verify that only the admin can get candidate details
         require(msg.sender == admin, "Only admin can get a candidate.");
@@ -380,7 +326,7 @@ contract Voting {
         Candidate memory c = candidates[_candidateID];
         
         // Return the candidate details
-        return (c.id, c.name, c.party, c.voteCount);
+        return (c.id, c.name, c.party, c.imageUrl, c.voteCount);
     }
 
     /**

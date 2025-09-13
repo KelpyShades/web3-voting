@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { votingSession } from '../Global/MockData'
-import VotingForm from './components/VotingForm'
+import ClientOnlyVotingForm from './components/ClientOnlyVotingForm'
 import { redirect } from 'next/navigation'
 
 // admin dashboard page
@@ -31,7 +31,7 @@ export default async function AdminPage() {
   return (
     <div className="flex w-[clamp(20rem,80vw,40rem)] flex-1 flex-col">
       {/* Show theres no ongoing voting session */}
-      <VotingForm />
+      <ClientOnlyVotingForm />
     </div>
   )
 }

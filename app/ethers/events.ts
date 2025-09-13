@@ -202,7 +202,13 @@ async function hydrateFromPastEvents() {
       bigint,
       bigint,
       string,
-      Array<{ id: bigint; name: string; party: string; voteCount: bigint }>,
+      Array<{
+        id: bigint
+        name: string
+        party: string
+        imageUrl: string
+        voteCount: bigint
+      }>,
     ]
   }
   console.log('last', last)
@@ -218,11 +224,39 @@ async function hydrateFromPastEvents() {
     id: Number(c.id),
     name: c.name,
     party: c.party,
+    imageUrl: c.imageUrl,
     voteCount: Number(c.voteCount),
   }))
 
-  // Apply votes since creation by querying Voted events
+  // Check for VotingStartedImmediately events that would override the original times
   const fromBlock = last.blockNumber ?? 0
+  const startedImmediatelyLogs = await contract.queryFilter(
+    contract.filters.VotingStartedImmediately(),
+    fromBlock
+  )
+
+  // Use the most recent start/end times (from VotingStartedImmediately if it exists)
+  let finalStartTime = start
+  let finalEndTime = end
+
+  if (startedImmediatelyLogs.length > 0) {
+    // Get the most recent VotingStartedImmediately event
+    const mostRecentStarted = startedImmediatelyLogs[
+      startedImmediatelyLogs.length - 1
+    ] as unknown as Log & {
+      args: readonly [bigint, bigint]
+    }
+    finalStartTime = Number(mostRecentStarted.args[0])
+    finalEndTime = Number(mostRecentStarted.args[1])
+    console.log('Found VotingStartedImmediately event, using updated times:', {
+      originalStart: start,
+      originalEnd: end,
+      updatedStart: finalStartTime,
+      updatedEnd: finalEndTime,
+    })
+  }
+
+  // Apply votes since creation by querying Voted events
   const votedLogs = await contract.queryFilter(
     contract.filters.Voted(),
     fromBlock
@@ -237,16 +271,16 @@ async function hydrateFromPastEvents() {
     if (idx >= 0) candidates[idx] = { ...candidates[idx], voteCount: newCount }
   }
 
-  // Calculate total votes and current status
+  // Calculate total votes and current status using final times
   const voteCount = recomputeTotalVotes(candidates)
-  const status = computeStatus(start, end)
+  const status = computeStatus(finalStartTime, finalEndTime)
 
-  // Update the store with the complete voting session
+  // Update the store with the complete voting session using final times
   setVotingStoreSession({
     id: votingId,
     title,
-    startTime: start,
-    endTime: end,
+    startTime: finalStartTime,
+    endTime: finalEndTime,
     status,
     candidates,
     candidatesCount: candidates.length,
@@ -273,6 +307,7 @@ function attachEventListeners() {
         id: bigint
         name: string
         party: string
+        imageUrl: string
         voteCount: bigint
       }>
     ) => {
@@ -281,6 +316,7 @@ function attachEventListeners() {
         id: Number(c.id),
         name: c.name,
         party: c.party,
+        imageUrl: c.imageUrl,
         voteCount: Number(c.voteCount),
       }))
 
@@ -306,6 +342,10 @@ function attachEventListeners() {
         endTime: Number(_endTimestamp),
         status: computeStatus(Number(currentTime), Number(_endTimestamp)),
       })
+      console.log(
+        'started',
+        computeStatus(Number(currentTime), Number(_endTimestamp))
+      )
     }
   )
 
@@ -344,6 +384,7 @@ function detachEventListeners() {
   contract.removeAllListeners('VotingCreated')
   contract.removeAllListeners('Voted')
   contract.removeAllListeners('VotingDeleted')
+  contract.removeAllListeners('VotingStartedImmediately')
 }
 
 // ===== Public API =====

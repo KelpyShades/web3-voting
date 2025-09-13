@@ -30,6 +30,9 @@ const deleteSchema = z.object({
     .min(1, 'End time is required')
     .refine((v) => new Date(v) > new Date(), {
       message: 'End time must be in the future',
+    })
+    .refine((v) => new Date(v) > new Date(Date.now() + 1000 * 60 * 60), {
+      message: 'End time must be at least 1 hour from now',
     }),
 })
 

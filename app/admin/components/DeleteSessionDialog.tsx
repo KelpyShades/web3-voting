@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useVotingStore } from '@/app/ZustandStores/VotingStore'
 import { deleteVotingSession } from '@/app/ethers/transactions'
+import { deleteAllCandidateImages } from '@/app/supabase/storage'
 
 type DeleteFormValues = {
   title: string
@@ -49,6 +50,11 @@ export default function DeleteSessionDialog({
   const onSubmit = (data: DeleteFormValues) => {
     if (data.title === votingData.title) {
       deleteVotingSession()
+      deleteAllCandidateImages(
+        votingData.candidates.map((candidate) => ({
+          imageUrl: candidate.imageUrl,
+        }))
+      )
       onDelete()
       reset()
     }

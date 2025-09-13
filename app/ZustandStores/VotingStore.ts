@@ -5,6 +5,7 @@ type Candidate = {
   id: number
   name: string
   party: string
+  imageUrl: string
   voteCount: number
 }
 

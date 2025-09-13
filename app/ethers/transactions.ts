@@ -13,7 +13,7 @@ export async function createVotingSession(
   title: string,
   startDate: number,
   endDate: number,
-  candidates: Array<{ name: string; party: string }>
+  candidates: Array<{ name: string; party: string; imageUrl: string }>
 ) {
   const provider = new JsonRpcProvider('http://127.0.0.1:9545')
   const adminWallet = new Wallet(ADMIN_PRIVATE_KEY, provider)
@@ -33,6 +33,7 @@ export async function createVotingSession(
     id: index + 1, // Start IDs from 1
     name: candidate.name,
     party: candidate.party,
+    imageUrl: candidate.imageUrl,
     voteCount: 0, // Initial vote count is 0
   }))
 
@@ -43,6 +44,8 @@ export async function createVotingSession(
     endDate,
     candidatesWithIds // Use the transformed array
   )
+  const receipt = await tx.wait()
+  console.log('receipt', receipt)
   return await tx.wait()
 }
 
@@ -62,6 +65,8 @@ export async function deleteVotingSession() {
   }
 
   const tx = await contract.deleteVoting()
+  const receipt = await tx.wait()
+  console.log('receipt', receipt)
   return await tx.wait()
 }
 
@@ -80,6 +85,8 @@ export async function vote(
   )
 
   const tx = await contract.vote(candidateId, voterAddress)
+  const receipt = await tx.wait()
+  console.log('receipt', receipt)
   return await tx.wait()
 }
 
@@ -102,9 +109,10 @@ export async function startVotingImmediately(endDate: number) {
   }
 
   const tx = await contract.startVotingImmediately(endDate)
+  const receipt = await tx.wait()
+  console.log('receipt', receipt)
   return await tx.wait()
 }
-
 
 /**
  * Checks if a voter has already voted
@@ -112,7 +120,10 @@ export async function startVotingImmediately(endDate: number) {
  * @param voterKey - The private key of the voter to check
  * @returns Promise that resolves to true if the voter has voted, false otherwise
  */
-export async function checkVoterHasVoted(voterAddress: string, voterKey: string): Promise<boolean> {
+export async function checkVoterHasVoted(
+  voterAddress: string,
+  voterKey: string
+): Promise<boolean> {
   const provider = new JsonRpcProvider('http://127.0.0.1:9545')
   const voterWallet = new Wallet(voterKey, provider)
   const contract = new Contract(

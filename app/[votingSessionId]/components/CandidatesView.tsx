@@ -2,6 +2,7 @@
 import { useVotingStore } from '@/app/ZustandStores/VotingStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import CountUp from '@/components/ui/count-up'
+import Image from 'next/image'
 
 export default function CandidatesView() {
   const { votingData } = useVotingStore()
@@ -27,27 +28,41 @@ export default function CandidatesView() {
           >
             <CardHeader>
               <CardTitle>
-                <div className="flex w-full items-center justify-between gap-2 text-white">
-                  <p className="font-bold">{candidate.name}</p>
-                  <p className="text-sm text-black">{candidate.party}</p>
+                <div className="flex w-full items-center justify-between gap-2 text-black">
+                  <p className="overflow-hidden font-bold text-ellipsis whitespace-nowrap">
+                    {candidate.name}
+                  </p>
+                  <p className="overflow-hidden text-sm text-ellipsis whitespace-nowrap">
+                    {candidate.party}
+                  </p>
                 </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Card>
-                <CardContent className="text-md flex justify-between">
-                  <p className="font-bold">
-                    <CountUp
-                      from={0}
-                      to={candidate.voteCount}
-                      separator=","
-                      direction="up"
-                      duration={1}
-                      className="count-up-text"
-                    />{' '}
-                    votes
-                  </p>
-                  <p className="font-bold">{percentage.toFixed(2)}%</p>
+                <CardContent className="flex gap-10 text-lg">
+                  <Image
+                    src={candidate.imageUrl}
+                    alt={candidate.name}
+                    width={200}
+                    height={200}
+                    className="size-25 rounded-lg object-cover"
+                    priority
+                  />
+                  <div className="flex flex-col justify-center gap-2">
+                    <p className="font-bold">
+                      <CountUp
+                        from={0}
+                        to={candidate.voteCount}
+                        separator=","
+                        direction="up"
+                        duration={1}
+                        className="count-up-text"
+                      />{' '}
+                      votes
+                    </p>
+                    <p className="font-bold">{percentage.toFixed(2)}%</p>
+                  </div>
                 </CardContent>
               </Card>
             </CardContent>
