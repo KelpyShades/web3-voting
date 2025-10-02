@@ -73,7 +73,9 @@ module.exports = {
       gasPrice: 10000000000, // Set the gas price to an appropriate value
       confirmations: 2, // Set the number of confirmations needed for a transaction
       timeoutBlocks: 200, // Set the timeout for transactions
-      skipDryRun: true // Skip the dry run option
+      skipDryRun: true, // Skip the dry run option
+      networkCheckTimeout: 100000, // add this
+      pollingInterval: 30000      // add this
     },
     // Useful for testing. The `development` name is special - truffle uses it by default
     // if it's defined here and no other network is specified at the command line.

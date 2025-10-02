@@ -22228,12 +22228,12 @@
     "5777": {
       "events": {},
       "links": {},
-      "address": "0xAec8be9F0777c4eC0914311580b646cD80D62825",
-      "transactionHash": "0x03e3a03405b8909535f54604d8e2ca563ba3bfca40025c82cd237a2028c3c1f1"
+      "address": "0x1102456DEc967BCB6f2ed2345390B3300779531E",
+      "transactionHash": "0x12141985501d10078c46f99fe087a92a159a42ea88afd3a0b3190c4fe5be8ced"
     }
   },
   "schemaVersion": "3.4.16",
-  "updatedAt": "2025-09-12T21:56:10.394Z",
+  "updatedAt": "2025-09-13T22:53:16.263Z",
   "devdoc": {
     "details": "A smart contract for managing decentralized voting sessions",
     "events": {
